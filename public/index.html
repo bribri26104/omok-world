@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>오목 월드 (Omok World)</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            margin: 0; padding: 0;
+            background: #0f172a; color: #f8fafc;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; user-select: none; touch-action: manipulation;
+        }
+        header {
+            width: 100%; padding: 12px 16px; background: #1e293b;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo-title {
+            font-size: 1.4rem; font-weight: 900;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+        .view-panel { display: none; width: 100%; max-width: 950px; padding: 16px; flex-direction: column; align-items: center; }
+        .view-panel.active { display: flex; }
+        .card-box {
+            background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+            padding: 24px; width: 100%; max-width: 440px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; gap: 14px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 0.88rem; font-weight: bold; color: #94a3b8; }
+        input[type="text"], input[type="password"], select {
+            padding: 10px 12px; border-radius: 8px; border: 1px solid #475569;
+            background: #0f172a; color: #fff; font-size: 0.95rem; font-weight: bold;
+        }
+        .avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+        .avatar-opt {
+            font-size: 1.6rem; text-align: center; padding: 6px;
+            background: #0f172a; border-radius: 8px; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.2s;
+        }
+        .avatar-opt.selected { border-color: #38bdf8; background: #1e3a5f; }
+        button.btn-primary {
+            background: linear-gradient(135deg, #38bdf8, #2563eb);
+            color: #fff; border: none; padding: 12px; font-size: 1rem;
+            font-weight: bold; border-radius: 10px; cursor: pointer; transition: 0.2s;
+        }
+        button.btn-primary:hover { opacity: 0.9; }
+        .lobby-header {
+            width: 100%; background: #1e293b; border-radius: 12px; padding: 14px;
+            margin-bottom: 14px; display: flex; flex-wrap: wrap;
+            justify-content: space-between; align-items: center; gap: 10px;
+        }
+        .teacher-ctrl-panel {
+            width: 100%; background: #273549; border: 1px dashed #38bdf8;
+            border-radius: 10px; padding: 12px; margin-bottom: 12px;
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+        }
+        .lobby-status-banner {
+            width: 100%; background: #334155; padding: 12px; text-align: center;
+            font-size: 1rem; font-weight: bold; border-radius: 8px; margin-bottom: 12px;
+            color: #facc15; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .student-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 10px; width: 100%;
+        }
+        .student-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+            padding: 10px 8px; display: flex; flex-direction: column; align-items: center;
+            gap: 4px; text-align: center;
+        }
+        .student-card.playing { border-color: #f43f5e; background: #2b1d28; }
+        .student-badge { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .badge-lobby { background: #059669; color: #fff; }
+        .badge-playing { background: #e11d48; color: #fff; }
+
+        .game-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .match-info-bar {
+            width: 450px; max-width: 95vw; background: #1e293b; padding: 8px 14px;
+            border-radius: 10px; display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; font-size: 0.95rem; font-weight: bold;
+        }
+        .match-player { display: flex; align-items: center; gap: 6px; }
+        #board { box-shadow: 0 8px 24px rgba(0,0,0,0.5); border-radius: 10px; cursor: pointer; touch-action: none; }
+        .theme-bar { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+
+        .podium-stage {
+            display: flex; align-items: flex-end; justify-content: center; gap: 12px;
+            margin: 25px 0 20px 0; width: 100%; max-width: 480px;
+        }
+        .podium-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .podium-winner-info { display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; animation: bounce 1.2s infinite alternate; }
+        @keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-8px); } }
+        .podium-avatar { font-size: 2.4rem; }
+        .podium-name { font-size: 0.9rem; font-weight: bold; color: #f8fafc; margin-top: 2px; }
+        .podium-score { font-size: 0.78rem; color: #94a3b8; }
+        .podium-block {
+            width: 100%; border-radius: 10px 10px 0 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start; padding-top: 10px; font-weight: 900;
+            color: #0f172a; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .podium-1 { height: 160px; background: linear-gradient(180deg, #facc15, #ca8a04); font-size: 2.2rem; }
+        .podium-2 { height: 115px; background: linear-gradient(180deg, #e2e8f0, #94a3b8); font-size: 1.8rem; }
+        .podium-3 { height: 85px; background: linear-gradient(180deg, #fdba74, #ea580c); font-size: 1.5rem; }
+
+        .rank-table { width: 100%; max-width: 500px; border-collapse: collapse; background: #1e293b; border-radius: 10px; overflow: hidden; font-size: 0.88rem; }
+        .rank-table th, .rank-table td { padding: 8px 12px; text-align: center; border-bottom: 1px solid #334155; }
+        .rank-table th { background: #334155; color: #94a3b8; font-weight: bold; }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: #1e293b; border: 2px solid #38bdf8; padding: 24px; border-radius: 16px;
+            text-align: center; max-width: 380px; width: 88%; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-title">🏆 오목 월드 (Omok World)</div>
+        <div id="user-status-tag" style="font-size: 0.85rem; color: #94a3b8;">미접속</div>
+    </header>
+
+    <!-- [1. 로그인 화면] -->
+    <div id="view-login" class="view-panel active">
+        <div class="card-box">
+            <h2 style="text-align: center; margin: 4px 0 12px 0;">대기실 입장하기</h2>
+            
+            <div class="form-group">
+                <label>접속 역할 선택</label>
+                <select id="login-role" onchange="toggleRolePassword()">
+                    <option value="student">학생으로 입장</option>
+                    <option value="teacher">선생님(관리 교사)으로 입장</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="group-password" style="display: none;">
+                <label>교사용 비밀번호</label>
+                <input type="password" id="login-password" placeholder="비밀번호 입력">
+            </div>
+
+            <div class="form-group">
+                <label>내 닉네임</label>
+                <input type="text" id="login-nickname" maxlength="8" placeholder="예: 오목마스터" value="오목꿈나무">
+            </div>
+
+            <div class="form-group">
+                <label>캐릭터 선택</label>
+                <div class="avatar-grid" id="avatar-grid"></div>
+            </div>
+
+            <div class="form-group">
+                <label>나의 바둑판 & 바둑알 스킨 (자유 선택)</label>
+                <select id="theme-selector" onchange="changeTheme(this.value)">
+                    <option value="wood">🪵 전통 목재</option>
+                    <option value="cyber">⚡ 사이버 네온</option>
+                    <option value="chalk">🏫 학교 칠판 (분필)</option>
+                    <option value="pixel">👾 레트로 픽셀 (팩맨&고스트)</option>
+                    <option value="lava">🌋 작열하는 용암 (마그마)</option>
+                </select>
+            </div>
+
+            <button class="btn-primary" onclick="requestJoin()">대기실 입장</button>
+        </div>
+    </div>
+
+    <!-- [2. 중앙 대기실 화면] -->
+    <div id="view-lobby" class="view-panel">
+        <div class="teacher-ctrl-panel" id="teacher-ctrl" style="display: none;">
+            <div style="font-weight: bold; color: #38bdf8;">👨‍🏫 교사 관리 패널</div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <label style="font-size: 0.85rem;">
+                    <input type="checkbox" id="check-use-timer" onchange="updateTimerConfig()"> ⏱️ 한 판당 제한 시간 적용
+                </label>
+                <input type="number" id="input-timer-sec" value="180" min="30" max="600" step="30" style="width: 70px; padding: 4px;" onchange="updateTimerConfig()"> 초
+                <button class="btn-primary" style="padding: 6px 12px; background: #059669;" onclick="startTournament()">🚀 전체 매칭 시작</button>
+                <button class="btn-primary" style="padding: 6px 12px; background: #e11d48;" onclick="endTournament()">🛑 대회 종료(결과 발표)</button>
+            </div>
+        </div>
+
+        <div class="lobby-header">
+            <div>접속 인원: <span id="lobby-count" style="color: #38bdf8; font-weight: bold;">0</span> / 60명</div>
+            <div>진행 중인 대국: <span id="lobby-games-count" style="color: #f43f5e; font-weight: bold;">0</span>개</div>
+            <div>내 전적: <span id="my-record-text" style="color: #facc15; font-weight: bold;">0승 0패</span></div>
+        </div>
+
+        <div class="lobby-status-banner" id="lobby-banner">
+            선생님이 매칭을 시작할 때까지 잠시만 기다려 주세요! ⏳
+        </div>
+
+        <div style="width: 100%; font-weight: bold; margin-bottom: 8px;">대기실 현황</div>
+        <div class="student-grid" id="student-grid"></div>
+    </div>
+
+    <!-- [3. 대국실 화면] -->
+    <div id="view-game" class="view-panel">
+        <div class="game-wrapper">
+            <div class="match-info-bar">
+                <div class="match-player">
+                    <span id="player-my-avatar">🐥</span>
+                    <span id="player-my-name">나</span>
+                    <span id="player-my-stone" style="font-size: 0.8rem;">(흑)</span>
+                </div>
+                <div id="game-timer-display" style="color: #facc15; font-size: 1.1rem; display: none;">⏱️ 03:00</div>
+                <div class="match-player">
+                    <span id="player-op-stone" style="font-size: 0.8rem;">(백)</span>
+                    <span id="player-op-name">상대</span>
+                    <span id="player-op-avatar">🤖</span>
+                </div>
+            </div>
+
+            <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 6px; color: #38bdf8;" id="turn-indicator">
+                흑돌 차례입니다.
+            </div>
+
+            <canvas id="board" width="450" height="450"></canvas>
+
+            <div class="theme-bar">
+                <span style="font-size: 0.85rem; color: #94a3b8;">스킨 변경:</span>
+                <select id="ingame-theme-selector" onchange="changeTheme(this.value)">
+                    <option value="wood">🪵 전통 목재</option>
+                    <option value="cyber">⚡ 사이버 네온</option>
+                    <option value="chalk">🏫 학교 칠판</option>
+                    <option value="pixel">👾 레트로 픽셀</option>
+                    <option value="lava">🌋 작열하는 용암</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- [4. 오늘의 오목왕 시상식 화면] -->
+    <div id="view-ceremony" class="view-panel">
+        <h1 style="color: #facc15; margin-bottom: 4px;">🏆 오늘의 오목왕 시상식 🏆</h1>
+        <p style="color: #94a3b8; font-size: 0.9rem;">오늘의 치열한 반상 대결을 빛낸 명예로운 챔피언들입니다!</p>
+
+        <div class="podium-stage">
+            <div class="podium-col">
+                <div class="podium-winner-info" id="p-win-2">
+                    <div class="podium-avatar">🥈</div>
+                    <div class="podium-name" id="p2-name">-</div>
+                    <div class="podium-score" id="p2-score">-</div>
+                </div>
+                <div class="podium-block podium-2">2</div>
+            </div>
+            <div class="podium-col">
+                <div class="podium-winner-info" id="p-win-1">
+                    <div class="podium-avatar">🥇</div>
+                    <div class="podium-name" id="p1-name">-</div>
+                    <div class="podium-score" id="p1-score">-</div>
+                </div>
+                <div class="podium-block podium-1">1</div>
+            </div>
+            <div class="podium-col">
+                <div class="podium-winner-info" id="p-win-3">
+                    <div class="podium-avatar">🥉</div>
+                    <div class="podium-name" id="p3-name">-</div>
+                    <div class="podium-score" id="p3-score">-</div>
+                </div>
+                <div class="podium-block podium-3">3</div>
+            </div>
+        </div>
+
+        <div style="font-weight: bold; margin: 10px 0 6px 0;">전체 학생 최종 순위</div>
+        <table class="rank-table" id="rank-table">
+            <thead>
+                <tr><th>순위</th><th>캐릭터</th><th>닉네임</th><th>전적</th><th>승패 마진</th></tr>
+            </thead>
+            <tbody id="rank-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- 모달 -->
+    <div class="modal" id="game-modal">
+        <div class="modal-content">
+            <h2 id="modal-title" style="margin-top: 0;">대국 종료</h2>
+            <p id="modal-msg" style="color: #cbd5e1; line-height: 1.5;"></p>
+            <button class="btn-primary" onclick="backToLobbyFromModal()">대기실로 돌아가기</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let myUser = null;
+        let currentRoom = null;
+
+        const boardSize = 15;
+        let canvas, ctx;
+        let cellSize, stoneRadius;
+        let board = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
+        let myColor = 1;
+        let currentTurn = 1;
+        let isGameOver = false;
+        let lastMove = null;
+        let winningLine = null;
+        let currentTheme = 'wood';
+
+        let particles = [];
+        let isParticleAnimating = false;
+
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtxClass) audioCtx = new AudioCtxClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            initAudio();
+            if (!audioCtx) return;
+            const t = audioCtx.currentTime;
+
+            if (type === 'place') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(320, t);
+                osc.frequency.exponentialRampToValueAtTime(70, t + 0.05);
+                gain.gain.setValueAtTime(0.8, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.05);
+            } else if (type === 'warn') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, t);
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.linearRampToValueAtTime(0.01, t + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.15);
+            } else if (type === 'win') {
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.25, t + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + idx * 0.1 + 0.25);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(t + idx * 0.1);
+                    osc.stop(t + idx * 0.1 + 0.25);
+                });
+            }
+        }
+
+        const THEMES = {
+            wood:  { bg: '#e5b358', line: '#4a3319', dot: '#4a3319', border: 'none' },
+            cyber: { bg: '#0a0f1d', line: '#00f2fe', dot: '#00f2fe', border: '2px solid #00f2fe' },
+            chalk: { bg: '#1e392a', line: 'rgba(255, 255, 255, 0.55)', dot: 'rgba(255, 255, 255, 0.7)', border: '6px solid #8d6e63' },
+            pixel: { bg: '#1e272e', line: '#485460', dot: '#ffd32a', border: '4px solid #00d8d6' },
+            lava:  { bg: '#180707', line: '#ff4d4d', dot: '#ff9f1a', border: '3px solid #ff3838' }
+        };
+
+        const AVATARS = ['🐥', '🛡️️', '⚔️', '🔥', '👑', '🧙‍♂️', '🐱', '🐼', '🦊', '🚀', '⚡', '💎'];
+        let selectedAvatar = '🐥';
+
+        function initAvatarGrid() {
+            const grid = document.getElementById('avatar-grid');
+            grid.innerHTML = '';
+            AVATARS.forEach((av, i) => {
+                const item = document.createElement('div');
+                item.className = 'avatar-opt' + (i === 0 ? ' selected' : '');
+                item.innerText = av;
+                item.onclick = () => {
+                    document.querySelectorAll('.avatar-opt').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedAvatar = av;
+                };
+                grid.appendChild(item);
+            });
+        }
+
+        function toggleRolePassword() {
+            const role = document.getElementById('login-role').value;
+            document.getElementById('group-password').style.display = (role === 'teacher') ? 'flex' : 'none';
+        }
+
+        function switchView(viewName) {
+            document.querySelectorAll('.view-panel').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view-${viewName}`).classList.add('active');
+        }
+
+        function changeTheme(key) {
+            currentTheme = key;
+            document.getElementById('theme-selector').value = key;
+            document.getElementById('ingame-theme-selector').value = key;
+            if (canvas) {
+                applyBoardTheme();
+                drawBoard();
+            }
+        }
+
+        function applyBoardTheme() {
+            const t = THEMES[currentTheme];
+            canvas.style.backgroundColor = t.bg;
+            canvas.style.border = t.border;
+        }
+
+        // Glitch HTTPS/WSS 자동 감지 웹소켓 연결
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            ws = new WebSocket(`${protocol}//${host}`);
+
+            ws.onopen = () => console.log("WebSocket 연결 성공");
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'ERROR') {
+                    alert(data.message);
+                } else if (data.type === 'JOIN_SUCCESS') {
+                    myUser = data.user;
+                    document.getElementById('user-status-tag').innerText = `[${myUser.role === 'teacher' ? '교사' : '학생'}] ${myUser.nickname}`;
+                    if (myUser.role === 'teacher') {
+                        document.getElementById('teacher-ctrl').style.display = 'flex';
+                    }
+                    switchView('lobby');
+                } else if (data.type === 'LOBBY_UPDATE') {
+                    handleLobbyUpdate(data);
+                } else if (data.type === 'GAME_START') {
+                    handleGameStart(data);
+                } else if (data.type === 'OPPONENT_MOVE') {
+                    executeMove(data.r, data.c, data.color, false);
+                } else if (data.type === 'TIMER_TICK') {
+                    updateTimerUI(data.timeLeft);
+                } else if (data.type === 'GAME_OVER') {
+                    handleGameOverModal(data);
+                } else if (data.type === 'TOURNAMENT_CEREMONY') {
+                    renderCeremony(data.ranking);
+                }
+            };
+
+            ws.onclose = () => console.log("WebSocket 연결 끊김");
+        }
+
+        function requestJoin() {
+            initAudio();
+            const nickname = document.getElementById('login-nickname').value.trim();
+            const role = document.getElementById('login-role').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!nickname) {
+                alert("닉네임을 입력해 주세요!");
+                return;
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                connectWebSocket();
+                setTimeout(() => {
+                    sendJoin(nickname, role, password);
+                }, 400);
+            } else {
+                sendJoin(nickname, role, password);
+            }
+        }
+
+        function sendJoin(nickname, role, password) {
+            ws.send(JSON.stringify({
+                type: 'JOIN',
+                nickname,
+                avatar: selectedAvatar,
+                role,
+                password
+            }));
+        }
+
+        function updateTimerConfig() {
+            if (!myUser || myUser.role !== 'teacher') return;
+            const useTimer = document.getElementById('check-use-timer').checked;
+            const timerSeconds = parseInt(document.getElementById('input-timer-sec').value, 10);
+            ws.send(JSON.stringify({
+                type: 'SET_TIMER_CONFIG',
+                useTimer,
+                timerSeconds
+            }));
+        }
+
+        function startTournament() {
+            if (!confirm("전체 학생의 첫 대국을 랜덤 매칭하시겠습니까?")) return;
+            ws.send(JSON.stringify({ type: 'START_TOURNAMENT' }));
+        }
+
+        function endTournament() {
+            if (!confirm("대회를 종료하고 진행 중인 판이 끝나면 최종 시상식으로 이동하시겠습니까?")) return;
+            ws.send(JSON.stringify({ type: 'END_TOURNAMENT' }));
+        }
+
+        function handleLobbyUpdate(data) {
+            document.getElementById('lobby-count').innerText = data.players.length;
+            document.getElementById('lobby-games-count').innerText = data.activeRoomsCount;
+
+            const me = data.players.find(p => myUser && p.id === myUser.id);
+            if (me) {
+                document.getElementById('my-record-text').innerText = `${me.wins}승 ${me.losses}패 (마진: ${me.margin >= 0 ? '+' : ''}${me.margin})`;
+            }
+
+            const banner = document.getElementById('lobby-banner');
+            if (data.tournamentEnded) {
+                banner.innerText = "🛑 대회가 마감되었습니다! 진행 중인 경기가 끝나면 최종 시상식이 열립니다.";
+                banner.style.color = "#f43f5e";
+            } else if (data.tournamentStarted) {
+                banner.innerText = "⚡ 순환 매칭 가동 중! 대기실에 6명 이상 모이면 실력순으로 즉시 자동 매칭됩니다.";
+                banner.style.color = "#38bdf8";
+            } else {
+                banner.innerText = "선생님이 매칭을 시작할 때까지 잠시만 기다려 주세요! ⏳";
+                banner.style.color = "#facc15";
+            }
+
+            const grid = document.getElementById('student-grid');
+            grid.innerHTML = '';
+            data.players.forEach(p => {
+                if (p.role === 'teacher') return;
+                const card = document.createElement('div');
+                card.className = `student-card ${p.state === 'playing' ? 'playing' : ''}`;
+                card.innerHTML = `
+                    <div style="font-size: 1.8rem;">${p.avatar}</div>
+                    <div style="font-weight: bold; font-size: 0.88rem;">${p.nickname}</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;">${p.wins}승 ${p.losses}패</div>
+                    <span class="student-badge ${p.state === 'playing' ? 'badge-playing' : 'badge-lobby'}">
+                        ${p.state === 'playing' ? '대국 중' : '대기 중'}
+                    </span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function handleGameStart(data) {
+            currentRoom = data;
+            myColor = data.myColor;
+            currentTurn = 1;
+            isGameOver = false;
+            lastMove = null;
+            winningLine = null;
+            board = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
+
+            document.getElementById('player-my-avatar').innerText = selectedAvatar;
+            document.getElementById('player-my-name').innerText = myUser.nickname;
+            document.getElementById('player-my-stone').innerText = myColor === 1 ? '(흑돌, 선공)' : '(백돌, 후공)';
+
+            document.getElementById('player-op-avatar').innerText = data.opponent.avatar;
+            document.getElementById('player-op-name').innerText = data.opponent.nickname;
+            document.getElementById('player-op-stone').innerText = myColor === 1 ? '(백돌, 후공)' : '(흑돌, 선공)';
+
+            const timerEl = document.getElementById('game-timer-display');
+            if (data.useTimer) {
+                timerEl.style.display = 'inline-block';
+                updateTimerUI(data.timerSeconds);
+            } else {
+                timerEl.style.display = 'none';
+            }
+
+            switchView('game');
+            applyBoardTheme();
+            updateTurnUI();
+            drawBoard();
+
+            if (data.opponent.isAi && myColor === 2) {
+                setTimeout(runAiTurn, 600);
+            }
+        }
+
+        function updateTimerUI(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            document.getElementById('game-timer-display').innerText = `⏱️ ${m}:${s}`;
+        }
+
+        function updateTurnUI() {
+            const el = document.getElementById('turn-indicator');
+            if (currentTurn === myColor) {
+                el.innerText = `🟢 나의 차례입니다! (${myColor === 1 ? '흑돌' : '백돌'})`;
+                el.style.color = '#38bdf8';
+            } else {
+                el.innerText = `⏳ 상대방의 착수를 기다리는 중입니다...`;
+                el.style.color = '#94a3b8';
+            }
+        }
+
+        function handleBoardClick(e) {
+            if (isGameOver || currentTurn !== myColor) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+            const x = (clientX - rect.left) * scaleX;
+            const y = (clientY - rect.top) * scaleY;
+
+            const c = Math.floor(x / cellSize);
+            const r = Math.floor(y / cellSize);
+
+            if (r < 0 || r >= boardSize || c < 0 || c >= boardSize) return;
+            if (board[r][c] !== 0) return;
+
+            if (myColor === 1) {
+                const foul = checkRenjuFoul(board, r, c);
+                if (foul) {
+                    playSound('warn');
+                    alert(`[금수 경고] 흑돌은 ${foul} 자리에 둘 수 없습니다!`);
+                    return;
+                }
+            }
+
+            executeMove(r, c, myColor, true);
+
+            if (currentRoom.opponent.isAi && !isGameOver && currentTurn !== myColor) {
+                setTimeout(runAiTurn, 500);
+            }
+        }
+
+        function executeMove(r, c, color, isMyMove) {
+            board[r][c] = color;
+            lastMove = { r, c };
+            playSound('place');
+
+            if (currentTheme === 'lava') {
+                spawnLavaParticles(r, c, color);
+            }
+
+            const win = checkWin(board, r, c, color);
+            if (win) {
+                isGameOver = true;
+                winningLine = win;
+                drawBoard();
+                if (isMyMove) {
+                    ws.send(JSON.stringify({
+                        type: 'REPORT_WIN',
+                        winnerColor: color,
+                        reason: `${color === 1 ? '흑돌' : '백돌'} 5목 완성!`
+                    }));
+                }
+                return;
+            }
+
+            currentTurn = (color === 1) ? 2 : 1;
+            updateTurnUI();
+            drawBoard();
+
+            if (isMyMove) {
+                ws.send(JSON.stringify({ type: 'MOVE', r, c, color }));
+            }
+        }
+
+        function handleGameOverModal(data) {
+            isGameOver = true;
+            const modal = document.getElementById('game-modal');
+            const title = document.getElementById('modal-title');
+            const msg = document.getElementById('modal-msg');
+
+            if (data.isDraw) {
+                title.innerText = "🤝 무승부!";
+                msg.innerText = data.reason || "반상 위의 모든 자리가 찼습니다.";
+            } else if (data.isWin) {
+                playSound('win');
+                title.innerText = "🎉 승리하셨습니다!";
+                title.style.color = "#38bdf8";
+                msg.innerText = data.reason || "멋진 경기였습니다! 대기실로 복귀합니다.";
+            } else {
+                title.innerText = "아쉬운 패배!";
+                title.style.color = "#f43f5e";
+                msg.innerText = data.reason || "다음 경기에서 승리를 노려보세요!";
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function backToLobbyFromModal() {
+            document.getElementById('game-modal').style.display = 'none';
+            switchView('lobby');
+        }
+
+        function checkRenjuFoul(b, r, c) {
+            b[r][c] = 1;
+            const len = getMaxContinuousStones(b, r, c, 1);
+            if (len > 5) { b[r][c] = 0; return "6목 이상 장목"; }
+            if (len === 5) { b[r][c] = 0; return null; }
+
+            if (countOpenFours(b, r, c, 1) >= 2) { b[r][c] = 0; return "4-4(쌍사)"; }
+            if (countOpenThrees(b, r, c, 1) >= 2) { b[r][c] = 0; return "3-3(쌍삼)"; }
+
+            b[r][c] = 0;
+            return null;
+        }
+
+        function getMaxContinuousStones(b, r, c, color) {
+            const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+            let maxCount = 1;
+            for (const [dr, dc] of dirs) {
+                let cnt = 1, step = 1;
+                while (isValid(r + dr * step, c + dc * step) && b[r + dr * step][c + dc * step] === color) { cnt++; step++; }
+                step = 1;
+                while (isValid(r - dr * step, c - dc * step) && b[r - dr * step][c - dc * step] === color) { cnt++; step++; }
+                if (cnt > maxCount) maxCount = cnt;
+            }
+            return maxCount;
+        }
+
+        function countOpenFours(b, r, c, color) {
+            const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+            let count = 0;
+            for (const [dr, dc] of dirs) {
+                let cnt = 1, i = 1, j = 1;
+                while (isValid(r + dr * i, c + dc * i) && b[r + dr * i][c + dc * i] === color) { cnt++; i++; }
+                while (isValid(r - dr * j, c - dc * j) && b[r - dr * j][c - dc * j] === color) { cnt++; j++; }
+                if (cnt === 4) {
+                    const o1 = isValid(r + dr * i, c + dc * i) && b[r + dr * i][c + dc * i] === 0;
+                    const o2 = isValid(r - dr * j, c - dc * j) && b[r - dr * j][c - dc * j] === 0;
+                    if (o1 || o2) count++;
+                }
+            }
+            return count;
+        }
+
+        function countOpenThrees(b, r, c, color) {
+            const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+            let count = 0;
+            for (const [dr, dc] of dirs) {
+                let cnt = 1, i = 1, j = 1;
+                while (isValid(r + dr * i, c + dc * i) && b[r + dr * i][c + dc * i] === color) { cnt++; i++; }
+                while (isValid(r - dr * j, c - dc * j) && b[r - dr * j][c - dc * j] === color) { cnt++; j++; }
+                if (cnt === 3) {
+                    const o1 = isValid(r + dr * i, c + dc * i) && b[r + dr * i][c + dc * i] === 0;
+                    const o2 = isValid(r - dr * j, c - dc * j) && b[r - dr * j][c - dc * j] === 0;
+                    if (o1 && o2) count++;
+                }
+            }
+            return count;
+        }
+
+        function isValid(r, c) { return r >= 0 && r < boardSize && c >= 0 && c < boardSize; }
+
+        function checkWin(b, r, c, color) {
+            const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+            for (const [dr, dc] of dirs) {
+                let stones = [{ r, c }];
+                let step = 1;
+                while (isValid(r + dr * step, c + dc * step) && b[r + dr * step][c + dc * step] === color) {
+                    stones.push({ r: r + dr * step, c: c + dc * step });
+                    step++;
+                }
+                step = 1;
+                while (isValid(r - dr * step, c - dc * step) && b[r - dr * step][c - dc * step] === color) {
+                    stones.push({ r: r - dr * step, c: c - dc * step });
+                    step++;
+                }
+                if ((color === 1 && stones.length === 5) || (color === 2 && stones.length >= 5)) {
+                    return stones;
+                }
+            }
+            return null;
+        }
+
+        const AI_PARAMS = {
+            4:  { atkWeight: 2.2, defWeight: 0.8, errorRate: 0.03 },
+            5:  { atkWeight: 2.8, defWeight: 1.0, errorRate: 0.02 },
+            6:  { atkWeight: 1.5, defWeight: 1.5, errorRate: 0.00 },
+            7:  { atkWeight: 1.8, defWeight: 1.8, errorRate: 0.00 },
+            8:  { atkWeight: 1.8, defWeight: 1.8, errorRate: 0.00 },
+            9:  { atkWeight: 2.0, defWeight: 2.0, errorRate: 0.00 },
+            10: { atkWeight: 2.3, defWeight: 2.3, errorRate: 0.00 }
+        };
+
+        function runAiTurn() {
+            if (isGameOver) return;
+            const aiColor = (myColor === 1) ? 2 : 1;
+            const level = currentRoom.opponent.level || 4;
+            const p = AI_PARAMS[level] || AI_PARAMS[4];
+
+            let targetMove = null;
+
+            if (p.errorRate > 0 && Math.random() < p.errorRate) {
+                const candidates = [];
+                for (let r = 0; r < boardSize; r++) {
+                    for (let c = 0; c < boardSize; c++) {
+                        if (board[r][c] === 0 && hasNeighbor(board, r, c, 2)) {
+                            if (aiColor === 1 && checkRenjuFoul(board, r, c)) continue;
+                            candidates.push({ r, c });
+                        }
+                    }
+                }
+                if (candidates.length > 0) targetMove = candidates[Math.floor(Math.random() * candidates.length)];
+            }
+
+            if (!targetMove) {
+                let bestScore = -Infinity;
+                let candidateMoves = [];
+
+                for (let r = 0; r < boardSize; r++) {
+                    for (let c = 0; c < boardSize; c++) {
+                        if (board[r][c] !== 0) continue;
+                        if (!hasNeighbor(board, r, c, 2)) continue;
+                        if (aiColor === 1 && checkRenjuFoul(board, r, c)) continue;
+
+                        const atk = evaluatePosition(board, r, c, aiColor);
+                        const def = evaluatePosition(board, r, c, myColor);
+                        const score = atk * p.atkWeight + def * p.defWeight;
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            candidateMoves = [{ r, c }];
+                        } else if (Math.abs(score - bestScore) < 0.1) {
+                            candidateMoves.push({ r, c });
+                        }
+                    }
+                }
+
+                if (candidateMoves.length > 0) {
+                    targetMove = candidateMoves[Math.floor(Math.random() * candidateMoves.length)];
+                } else {
+                    targetMove = { r: 7, c: 7 };
+                }
+            }
+
+            executeMove(targetMove.r, targetMove.c, aiColor, false);
+
+            if (checkWin(board, targetMove.r, targetMove.c, aiColor)) {
+                ws.send(JSON.stringify({
+                    type: 'REPORT_WIN',
+                    winnerColor: aiColor,
+                    reason: `${currentRoom.opponent.nickname}에게 아쉽게 패배하였습니다.`
+                }));
+            }
+        }
+
+        function hasNeighbor(b, r, c, dist) {
+            for (let dr = -dist; dr <= dist; dr++) {
+                for (let dc = -dist; dc <= dist; dc++) {
+                    const nr = r + dr, nc = c + dc;
+                    if (isValid(nr, nc) && b[nr][nc] !== 0) return true;
+                }
+            }
+            return false;
+        }
+
+        function evaluatePosition(b, r, c, color) {
+            b[r][c] = color;
+            let score = 0;
+            const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+
+            for (const [dr, dc] of dirs) {
+                let cnt = 1, i = 1, j = 1;
+                while (isValid(r + dr * i, c + dc * i) && b[r + dr * i][c + dc * i] === color) { cnt++; i++; }
+                while (isValid(r - dr * j, c - dc * j) && b[r - dr * j][c - dc * j] === color) { cnt++; j++; }
+
+                const o1 = isValid(r + dr * i, c + dc * i) && b[r + dr * i][c + dc * i] === 0;
+                const o2 = isValid(r - dr * j, c - dc * j) && b[r - dr * j][c - dc * j] === 0;
+                const ends = (o1 ? 1 : 0) + (o2 ? 1 : 0);
+
+                if (cnt >= 5) score += 100000;
+                else if (cnt === 4) score += (ends === 2) ? 10000 : (ends === 1 ? 2500 : 0);
+                else if (cnt === 3) score += (ends === 2) ? 1500 : (ends === 1 ? 200 : 0);
+                else if (cnt === 2) score += (ends === 2) ? 100 : 0;
+            }
+            b[r][c] = 0;
+            return score;
+        }
+
+        function drawBoard() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const th = THEMES[currentTheme];
+
+            ctx.beginPath();
+            ctx.strokeStyle = th.line;
+            ctx.lineWidth = (currentTheme === 'pixel') ? 1.5 : (currentTheme === 'chalk' ? 1.4 : 1.2);
+            for (let i = 0; i < boardSize; i++) {
+                const pos = cellSize / 2 + i * cellSize;
+                ctx.moveTo(cellSize / 2, pos);
+                ctx.lineTo(canvas.width - cellSize / 2, pos);
+                ctx.moveTo(pos, cellSize / 2);
+                ctx.lineTo(pos, canvas.height - cellSize / 2);
+            }
+            ctx.stroke();
+
+            const starPoints = [3, 7, 11];
+            ctx.fillStyle = th.dot;
+            for (const r of starPoints) {
+                for (const c of starPoints) {
+                    ctx.beginPath();
+                    ctx.arc(cellSize / 2 + c * cellSize, cellSize / 2 + r * cellSize, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            for (let r = 0; r < boardSize; r++) {
+                for (let c = 0; c < boardSize; c++) {
+                    if (board[r][c] !== 0) drawStone(r, c, board[r][c]);
+                }
+            }
+
+            if (lastMove && board[lastMove.r][lastMove.c] !== 0) {
+                ctx.beginPath();
+                ctx.strokeStyle = (currentTheme === 'lava') ? "#fff200" : "#e74c3c";
+                ctx.lineWidth = 2.5;
+                ctx.arc(cellSize / 2 + lastMove.c * cellSize, cellSize / 2 + lastMove.r * cellSize, stoneRadius * 0.45, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            if (winningLine && winningLine.length >= 5) {
+                ctx.beginPath();
+                ctx.strokeStyle = "#facc15";
+                ctx.lineWidth = 5;
+                ctx.lineCap = "round";
+                const p0 = winningLine[0];
+                ctx.moveTo(cellSize / 2 + p0.c * cellSize, cellSize / 2 + p0.r * cellSize);
+                for (let i = 1; i < winningLine.length; i++) {
+                    ctx.lineTo(cellSize / 2 + winningLine[i].c * cellSize, cellSize / 2 + winningLine[i].r * cellSize);
+                }
+                ctx.stroke();
+            }
+        }
+
+        function drawStone(r, c, color) {
+            const x = cellSize / 2 + c * cellSize;
+            const y = cellSize / 2 + r * cellSize;
+
+            if (currentTheme === 'pixel') {
+                drawPixelStone(x, y, color);
+                return;
+            }
+            if (currentTheme === 'chalk') {
+                drawChalkStone(x, y, color);
+                return;
+            }
+            if (currentTheme === 'lava') {
+                drawLavaStone(x, y, color);
+                return;
+            }
+            if (currentTheme === 'cyber') {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(x, y, stoneRadius, 0, Math.PI * 2);
+                ctx.fillStyle = (color === 1) ? "#ff007f" : "#00f2fe";
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.restore();
+                return;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x, y, stoneRadius, 0, Math.PI * 2);
+            const grad = ctx.createRadialGradient(x - stoneRadius * 0.25, y - stoneRadius * 0.25, stoneRadius * 0.1, x, y, stoneRadius);
+            if (color === 1) {
+                grad.addColorStop(0, '#555555'); grad.addColorStop(1, '#111111');
+            } else {
+                grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#dcdde1');
+            }
+            ctx.fillStyle = grad;
+            ctx.shadowColor = "rgba(0,0,0,0.35)";
+            ctx.shadowBlur = 4;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawChalkStone(x, y, color) {
+            ctx.save();
+            const baseColor = (color === 1) ? 'rgba(74, 144, 226, ' : 'rgba(245, 246, 250, ';
+            ctx.beginPath();
+            for (let i = 0; i <= 16; i++) {
+                const theta = (i / 16) * Math.PI * 2;
+                const jitter = (Math.sin(theta * 7) + Math.cos(theta * 5)) * 0.7;
+                const r = stoneRadius + jitter;
+                const px = x + Math.cos(theta) * r;
+                const py = y + Math.sin(theta) * r;
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fillStyle = baseColor + '0.82)';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLavaStone(x, y, color) {
+            ctx.save();
+            if (color === 1) {
+                const grad = ctx.createRadialGradient(x - 3, y - 3, 2, x, y, stoneRadius);
+                grad.addColorStop(0, '#383333'); grad.addColorStop(0.65, '#1e1818'); grad.addColorStop(1, '#636e72');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(x, y, stoneRadius, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                const grad = ctx.createRadialGradient(x, y, 1, x, y, stoneRadius);
+                grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.3, '#fff200'); grad.addColorStop(1, '#d63031');
+                ctx.fillStyle = grad;
+                ctx.shadowColor = '#ff3838';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(x, y, stoneRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawPixelStone(cx, cy, color) {
+            ctx.save();
+            ctx.fillStyle = (color === 1) ? "#29b6f6" : "#ffeb3b";
+            ctx.fillRect(cx - stoneRadius, cy - stoneRadius, stoneRadius * 2, stoneRadius * 2);
+            ctx.fillStyle = (color === 1) ? "#ffffff" : "#000000";
+            ctx.fillRect(cx - stoneRadius / 2, cy - stoneRadius / 2, stoneRadius * 0.4, stoneRadius * 0.4);
+            ctx.fillRect(cx + stoneRadius / 5, cy - stoneRadius / 2, stoneRadius * 0.4, stoneRadius * 0.4);
+            ctx.restore();
+        }
+
+        function spawnLavaParticles(r, c, color) {
+            const cx = cellSize / 2 + c * cellSize;
+            const cy = cellSize / 2 + r * cellSize;
+            for (let i = 0; i < 12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1.5 + Math.random() * 3;
+                particles.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                    size: 2 + Math.random() * 3,
+                    color: color === 1 ? '#ff3838' : '#fff200',
+                    alpha: 1.0, life: 1.0, decay: 0.04
+                });
+            }
+            if (!isParticleAnimating) {
+                isParticleAnimating = true;
+                requestAnimationFrame(updateAndDrawParticles);
+            }
+        }
+
+        function updateAndDrawParticles() {
+            if (particles.length === 0) { isParticleAnimating = false; drawBoard(); return; }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.life -= p.decay; p.alpha = Math.max(0, p.life);
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            drawBoard();
+            ctx.save();
+            for (const p of particles) {
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+            if (particles.length > 0) requestAnimationFrame(updateAndDrawParticles);
+            else isParticleAnimating = false;
+        }
+
+        function renderCeremony(ranking) {
+            switchView('ceremony');
+            playSound('win');
+
+            if (ranking[0]) {
+                document.getElementById('p1-name').innerText = ranking[0].nickname;
+                document.getElementById('p1-score').innerText = `${ranking[0].wins}승 ${ranking[0].losses}패`;
+            }
+            if (ranking[1]) {
+                document.getElementById('p2-name').innerText = ranking[1].nickname;
+                document.getElementById('p2-score').innerText = `${ranking[1].wins}승 ${ranking[1].losses}패`;
+            }
+            if (ranking[2]) {
+                document.getElementById('p3-name').innerText = ranking[2].nickname;
+                document.getElementById('p3-score').innerText = `${ranking[2].wins}승 ${ranking[2].losses}패`;
+            }
+
+            const tbody = document.getElementById('rank-tbody');
+            tbody.innerHTML = '';
+            ranking.forEach((r, idx) => {
+                const tr = document.createElement('tr');
+                const margin = r.wins - r.losses;
+                tr.innerHTML = `
+                    <td style="font-weight: bold; color: ${idx === 0 ? '#facc15' : (idx === 1 ? '#e2e8f0' : (idx === 2 ? '#fdba74' : '#94a3b8'))};">${idx + 1}위</td>
+                    <td style="font-size: 1.3rem;">${r.avatar}</td>
+                    <td style="font-weight: bold;">${r.nickname}</td>
+                    <td>${r.wins}승 ${r.losses}패</td>
+                    <td style="color: ${margin >= 0 ? '#38bdf8' : '#f43f5e'}; font-weight: bold;">${margin >= 0 ? '+' : ''}${margin}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initAvatarGrid();
+            canvas = document.getElementById('board');
+            ctx = canvas.getContext('2d');
+            cellSize = canvas.width / boardSize;
+            stoneRadius = cellSize * 0.42;
+
+            canvas.addEventListener('pointerdown', handleBoardClick);
+        });
+    </script>
+</body>
+</html>
