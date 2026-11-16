@@ -367,7 +367,7 @@
             lava:  { bg: '#180707', line: '#ff4d4d', dot: '#ff9f1a', border: '3px solid #ff3838' }
         };
 
-        const AVATARS = ['🐥', '🛡️️', '⚔️', '🔥', '👑', '🧙‍♂️', '🐱', '🐼', '🦊', '🚀', '⚡', '💎'];
+        const AVATARS = ['🐥', '🛡️', '⚔️', '🔥', '👑', '🧙‍♂️', '🐱', '🐼', '🦊', '🚀', '⚡', '💎'];
         let selectedAvatar = '🐥';
 
         function initAvatarGrid() {
@@ -412,7 +412,6 @@
             canvas.style.border = t.border;
         }
 
-        // Glitch HTTPS/WSS 자동 감지 웹소켓 연결
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const host = window.location.host;
@@ -446,7 +445,12 @@
                 }
             };
 
-            ws.onclose = () => console.log("WebSocket 연결 끊김");
+            ws.onclose = () => {
+                console.log("WebSocket 연결 끊김");
+                if (myUser && myUser.state === 'playing') {
+                    alert("네트워크 연결이 끊겼습니다. 화면을 새로고침하여 다시 입장해 주세요!");
+                }
+            };
         }
 
         function requestJoin() {
@@ -507,6 +511,7 @@
 
             const me = data.players.find(p => myUser && p.id === myUser.id);
             if (me) {
+                myUser.state = me.state;
                 document.getElementById('my-record-text').innerText = `${me.wins}승 ${me.losses}패 (마진: ${me.margin >= 0 ? '+' : ''}${me.margin})`;
             }
 
@@ -545,6 +550,7 @@
             myColor = data.myColor;
             currentTurn = 1;
             isGameOver = false;
+            if (myUser) myUser.state = 'playing';
             lastMove = null;
             winningLine = null;
             board = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
@@ -661,6 +667,7 @@
 
         function handleGameOverModal(data) {
             isGameOver = true;
+            if (myUser) myUser.state = 'lobby';
             const modal = document.getElementById('game-modal');
             const title = document.getElementById('modal-title');
             const msg = document.getElementById('modal-msg');
@@ -684,6 +691,10 @@
 
         function backToLobbyFromModal() {
             document.getElementById('game-modal').style.display = 'none';
+            if (myUser) myUser.state = 'lobby';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'RETURN_TO_LOBBY' }));
+            }
             switchView('lobby');
         }
 
