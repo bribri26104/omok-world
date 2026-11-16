@@ -4,11 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 
-// Glitch 환경 포트 호환 (기본 3000)
 const PORT = process.env.PORT || 3000;
 const TEACHER_PW = "qazxdr579*";
 
-// 1. 정적 파일 서빙용 HTTP 서버
 const server = http.createServer((req, res) => {
     let filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
     const ext = path.extname(filePath);
@@ -30,15 +28,14 @@ const server = http.createServer((req, res) => {
     });
 });
 
-// 2. WebSocket 서버 생성
 const wss = new WebSocket.Server({ server });
 
-let players = new Map(); 
-let rooms = new Map();   
+let players = new Map(); // ws -> player object
+let rooms = new Map();   // roomId -> room object
 let tournamentStarted = false;
 let tournamentEnded = false;
 let useTimer = false;
-let timerSeconds = 180; 
+let timerSeconds = 180;
 
 function broadcastLobbyState() {
     const playerList = Array.from(players.values()).map(p => ({
@@ -88,7 +85,7 @@ function createRoom(p1, p2, isAi = false, aiLevel = 4) {
     p1.state = 'playing';
     p1.roomId = roomId;
 
-    if (!isAi) {
+    if (!isAi && p2) {
         p2.state = 'playing';
         p2.roomId = roomId;
     }
@@ -106,16 +103,18 @@ function createRoom(p1, p2, isAi = false, aiLevel = 4) {
 
     rooms.set(roomId, roomData);
 
-    p1.ws.send(JSON.stringify({
-        type: 'GAME_START',
-        roomId,
-        myColor: p1Color,
-        opponent: { nickname: roomData.p2.nickname, avatar: roomData.p2.avatar, isAi, level: aiLevel },
-        useTimer,
-        timerSeconds: timerSeconds
-    }));
+    if (p1.ws && p1.ws.readyState === WebSocket.OPEN) {
+        p1.ws.send(JSON.stringify({
+            type: 'GAME_START',
+            roomId,
+            myColor: p1Color,
+            opponent: { nickname: roomData.p2.nickname, avatar: roomData.p2.avatar, isAi, level: aiLevel },
+            useTimer,
+            timerSeconds: timerSeconds
+        }));
+    }
 
-    if (!isAi) {
+    if (!isAi && p2 && p2.ws && p2.ws.readyState === WebSocket.OPEN) {
         p2.ws.send(JSON.stringify({
             type: 'GAME_START',
             roomId,
@@ -139,7 +138,7 @@ function createRoom(p1, p2, isAi = false, aiLevel = 4) {
                 timeLeft: roomData.timeLeft
             });
             if (p1.ws && p1.ws.readyState === WebSocket.OPEN) p1.ws.send(timerPayload);
-            if (!isAi && p2.ws && p2.ws.readyState === WebSocket.OPEN) p2.ws.send(timerPayload);
+            if (!isAi && p2 && p2.ws && p2.ws.readyState === WebSocket.OPEN) p2.ws.send(timerPayload);
 
             if (roomData.timeLeft <= 0) {
                 clearInterval(roomData.interval);
@@ -188,9 +187,10 @@ function endGame(roomId, winnerColor, reason) {
     if (p1Player) {
         p1Player.state = 'lobby';
         p1Player.roomId = null;
-        if (winnerColor === 0) {}
-        else if (p1Won) p1Player.wins++;
-        else p1Player.losses++;
+        if (winnerColor !== 0) {
+            if (p1Won) p1Player.wins++;
+            else p1Player.losses++;
+        }
     }
 
     if (!room.p2.isAi) {
@@ -198,9 +198,10 @@ function endGame(roomId, winnerColor, reason) {
         if (p2Player) {
             p2Player.state = 'lobby';
             p2Player.roomId = null;
-            if (winnerColor === 0) {}
-            else if (p2Won) p2Player.wins++;
-            else p2Player.losses++;
+            if (winnerColor !== 0) {
+                if (p2Won) p2Player.wins++;
+                else p2Player.losses++;
+            }
         }
     }
 
@@ -249,7 +250,26 @@ function checkTournamentFinishAll() {
     }
 }
 
+// 💓 Heartbeat (30초마다 연결 확인하여 유령 연결 정리)
+const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) {
+            ws.terminate();
+            return;
+        }
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 30000);
+
+wss.on('close', () => {
+    clearInterval(interval);
+});
+
 wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+
     let currentUser = null;
 
     ws.on('message', (msg) => {
@@ -346,6 +366,16 @@ wss.on('connection', (ws) => {
                 endGame(currentUser.roomId, data.winnerColor, data.reason);
             }
 
+            // 대기실 복귀 명시적 신호 처리
+            if (data.type === 'RETURN_TO_LOBBY') {
+                if (currentUser) {
+                    currentUser.state = 'lobby';
+                    currentUser.roomId = null;
+                    broadcastLobbyState();
+                    setTimeout(checkRollingMatch, 1000);
+                }
+            }
+
         } catch (e) {
             console.error('Socket Message Error:', e);
         }
@@ -353,6 +383,7 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         if (currentUser) {
+            // 대국 중이던 상태에서 연결이 끊긴 경우 상대방 부전승 처리 및 대기실 복구
             if (currentUser.roomId) {
                 const room = rooms.get(currentUser.roomId);
                 if (room && !room.finished) {
